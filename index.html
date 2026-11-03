@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2진수 카드 게임 v3</title>
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    background: #f3f5fb;
+    color: #1f2937;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .sub { margin: 0 0 16px; color: #6b7280; font-size: 0.95rem; }
+  .small { font-size: 0.85rem; color: #6b7280; }
+
+  .btn {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: #e5e9f5;
+    color: #1f2937;
+  }
+  .btn.primary { background: #3b5bdb; color: #fff; }
+  .btn.start { background: #3b5bdb; color: #fff; font-size: 1.1rem; padding: 14px 28px; }
+  .btn.add { background: #2f9e44; color: #fff; }
+  .btn.remove { background: #e03131; color: #fff; }
+  .btn:hover:not(:disabled) { filter: brightness(0.96); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* 상단: 카드 개수 조절 */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  .count-info {
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    font-size: 0.95rem;
+    text-align: center;
+    line-height: 1.5;
+  }
+  .count-info b { color: #3b5bdb; font-size: 1.1rem; }
+
+  .cards {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 8px;
+    min-height: 136px;
+  }
+  .card {
+    width: 92px;
+    height: 136px;
+    perspective: 900px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card:focus-visible { outline: 3px solid #f59e0b; outline-offset: 4px; border-radius: 14px; }
+  .inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s;
+    transform-style: preserve-3d;
+  }
+  .card.flipped .inner { transform: rotateY(180deg); }
+  .face {
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+  .front {
+    background: linear-gradient(160deg, #6d8cff, #4257d6);
+    color: #fff;
+  }
+  .back {
+    background: #ffffff;
+    color: #9ca3af;
+    border: 3px solid #d1d5db;
+    transform: rotateY(180deg);
+  }
+  .value { font-size: 1.6rem; font-weight: 800; }
+  .dot { font-size: 2.4rem; line-height: 1; }
+  .label { font-size: 0.8rem; opacity: 0.85; }
+  .back .value { color: #6b7280; font-size: 1.3rem; }
+
+  .hint { font-size: 0.85rem; color: #6b7280; margin: 4px 0 18px; }
+
+  /* 게임 상태바 */
+  .gamebar {
+    width: 100%;
+    max-width: 640px;
+    margin-bottom: 14px;
+  }
+  #idleBar {
+    text-align: center;
+    background: #fff;
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+  #idleBar .small { margin-top: 8px; }
+  #playBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    font-size: 1rem;
+  }
+  #playBar b { font-size: 1.3rem; color: #3b5bdb; font-variant-numeric: tabular-nums; }
+
+  /* 목표 */
+  .goal {
+    width: 100%;
+    max-width: 640px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .goal-num { font-size: 2rem; font-weight: 800; color: #e8590c; }
+  .goal-status { font-size: 0.95rem; color: #6b7280; margin-top: 4px; min-height: 1.3em; }
+  .goal-status.done { color: #2f9e44; font-weight: 700; }
+
+  /* 게임 끝 화면 */
+  .end {
+    width: 100%;
+    max-width: 640px;
+    background: linear-gradient(160deg, #fff7e6, #ffffff);
+    border-radius: 18px;
+    padding: 28px 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .end-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 14px; }
+  .end-label { font-size: 0.95rem; color: #6b7280; }
+  .end-time {
+    font-size: 3.6rem;
+    font-weight: 800;
+    color: #e8590c;
+    font-variant-numeric: tabular-nums;
+    margin: 6px 0 8px;
+  }
+  .end .small { margin-bottom: 16px; }
+
+  /* 계산 결과 */
+  .panel {
+    width: 100%;
+    max-width: 640px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .result-box {
+    background: #f8f9fe;
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+  }
+  .result-title { font-size: 0.9rem; color: #6b7280; margin-bottom: 6px; }
+  .result-value {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #3b5bdb;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    word-break: break-all;
+  }
+  .formula {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 1rem;
+    color: #374151;
+    min-height: 1.4em;
+  }
+  .bits {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .bit {
+    width: 40px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
+  .bit span {
+    display: block;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1f2937;
+    padding: 6px 0;
+    border-radius: 8px;
+    background: #eef1f8;
+    margin-top: 4px;
+  }
+  .bit.on span { background: #3b5bdb; color: #fff; }
+  .actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 520px) {
+    .panel { grid-template-columns: 1fr; }
+    .card { width: 72px; height: 110px; }
+    .value { font-size: 1.3rem; }
+    .dot { font-size: 1.9rem; }
+    .bit { width: 34px; }
+    .end-time { font-size: 2.8rem; }
+  }
+</style>
+</head>
+<body>
+
+  <h1>2진수 카드 게임</h1>
+  <p class="sub">카드를 눌러 앞면(●)과 뒷면을 뒤집어 목표 숫자를 만들어 보세요.</p>
+
+  <div class="controls">
+    <button class="btn remove" id="removeBtn">카드 빼기 −</button>
+    <div class="count-info" aria-live="polite">
+      카드 <b id="countNum">5</b>장 (<b id="bitsNum">5</b>비트)<br>
+      만들 수 있는 가장 큰 숫자: <b id="maxNum">31</b>
+    </div>
+    <button class="btn add" id="addBtn">카드 추가 +</button>
+  </div>
+
+  <div class="cards" id="cards"></div>
+  <p class="hint">● 앞면 = 1 (카드 값을 더함) &nbsp;|&nbsp; 뒷면 = 0 (더하지 않음)</p>
+
+  <section class="gamebar">
+    <div id="idleBar">
+      <button class="btn start" id="startBtn">🎮 게임 시작</button>
+      <div class="small">목표 숫자를 5번 만들면 게임이 끝나요. 걸린 시간을 재 드려요!</div>
+    </div>
+    <div id="playBar" hidden>
+      <span>문제 <b id="probNum">1</b> / 5</span>
+      <span>⏱ <b id="timer">00:00.0</b></span>
+    </div>
+  </section>
+
+  <section class="goal" id="goalSec">
+    <div>목표 숫자 (10진수)</div>
+    <div class="goal-num" id="goalNum">0</div>
+    <div class="goal-status" id="goalStatus"></div>
+    <div class="actions" style="margin-top:10px">
+      <button class="btn" id="newGoalBtn">새 목표</button>
+    </div>
+  </section>
+
+  <section class="end" id="endSec" hidden>
+    <div class="end-title">🏁 게임 끝!</div>
+    <div class="end-label">걸린 시간</div>
+    <div class="end-time" id="finalTime">00:00.0</div>
+    <div class="small">5문제를 모두 맞혔어요.</div>
+    <button class="btn primary" id="restartBtn">다시 하기</button>
+  </section>
+
+  <section class="panel" aria-live="polite">
+    <div class="result-box">
+      <div class="result-title">앞면 카드의 합 (10진수)</div>
+      <div class="result-value" id="decimal">0</div>
+    </div>
+    <div class="result-box">
+      <div class="result-title">카드 상태 (2진수)</div>
+      <div class="result-value" id="binary">00000</div>
+    </div>
+    <div class="formula" id="formula">앞면 카드가 없어요.</div>
+    <div class="bits" id="bits"></div>
+    <div class="actions">
+      <button class="btn primary" id="allFront">모두 앞면으로</button>
+      <button class="btn" id="reset">모두 뒷면으로 (초기화)</button>
+    </div>
+  </section>
+
+<script>
+  const MIN_CARDS = 1;
+  const MAX_CARDS = 10;
+  const INITIAL_VALUES = [16, 8, 4, 2, 1];
+  const TOTAL_PROBLEMS = 5;
+  const FEEDBACK_DELAY = 900; // 정답 후 다음 문제까지 대기(ms)
+
+  let values = [...INITIAL_VALUES];   // 왼쪽부터 값 (맨 오른쪽은 항상 1)
+  let state = values.map(() => false); // true = 앞면(●)
+  let target = 1;
+  let cardEls = [];
+  let bitEls = [];
+
+  // 게임 상태
+  let mode = "idle";     // "idle" | "playing" | "done"
+  let problem = 1;
+  let locked = false;    // 정답 처리 중 (카드 조작 잠금)
+  let startTs = 0;
+  let rafId = null;
+  let elapsed = 0;
+
+  const $ = (id) => document.getElementById(id);
+  const cardsEl = $("cards");
+  const bitsEl = $("bits");
+
+  function maxNumber() {
+    return values.reduce((a, b) => a + b, 0); // 모두 앞면일 때 합 = 2^n - 1
+  }
+
+  function newTarget() {
+    const max = maxNumber();
+    let t;
+    do {
+      t = 1 + Math.floor(Math.random() * max);
+    } while (t === target && max > 1); // 같은 문제가 연속으로 나오지 않게
+    target = t;
+  }
+
+  function formatTime(ms) {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    const tenth = Math.floor((ms % 1000) / 100);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(minutes)}:${pad(seconds)}.${tenth}`;
+  }
+
+  // 카드 DOM을 values 기준으로 새로 만든다
+  function buildCards() {
+    cardsEl.innerHTML = "";
+    bitsEl.innerHTML = "";
+    cardEls = values.map((value, i) => {
+      const btn = document.createElement("button");
+      btn.className = "card";
+      btn.innerHTML = `
+        <div class="inner">
+          <div class="face front">
+            <div class="dot">●</div>
+            <div class="value">${value}</div>
+            <div class="label">앞면</div>
+          </div>
+          <div class="face back">
+            <div class="value">${value}</div>
+            <div class="label">뒷면</div>
+          </div>
+        </div>`;
+      btn.setAttribute("aria-label", `${value} 카드`);
+      btn.addEventListener("click", () => toggle(i));
+      cardsEl.appendChild(btn);
+      return btn;
+    });
+    bitEls = values.map((value) => {
+      const wrap = document.createElement("div");
+      wrap.className = "bit";
+      wrap.innerHTML = `${value}<span>0</span>`;
+      bitsEl.appendChild(wrap);
+      return wrap;
+    });
+  }
+
+  function toggle(i) {
+    if (locked) return;
+    state[i] = !state[i];
+    render();
+  }
+
+  function addCard() {
+    if (mode === "playing" || values.length >= MAX_CARDS) return;
+    values.unshift(values[0] * 2);
+    state.unshift(false);
+    buildCards();
+    newTarget();
+    render();
+  }
+
+  function removeCard() {
+    if (mode === "playing" || values.length <= MIN_CARDS) return;
+    values.shift();
+    state.shift();
+    buildCards();
+    newTarget();
+    render();
+  }
+
+  // ---------- 게임 흐름 ----------
+  function startGame() {
+    mode = "playing";
+    problem = 1;
+    locked = false;
+    state.fill(false);
+    newTarget();
+    startTimer();
+    render();
+  }
+
+  function afterCorrect() {
+    if (problem >= TOTAL_PROBLEMS) {
+      finishGame();
+      return;
+    }
+    problem++;
+    locked = false;
+    state.fill(false);   // 다음 문제는 모두 뒷면에서 시작
+    newTarget();
+    render();
+  }
+
+  function finishGame() {
+    mode = "done";
+    locked = false;
+    stopTimer();
+    $("finalTime").textContent = formatTime(elapsed);
+    render();
+  }
+
+  function startTimer() {
+    startTs = performance.now();
+    const tick = () => {
+      elapsed = performance.now() - startTs;
+      $("timer").textContent = formatTime(elapsed);
+      rafId = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  function stopTimer() {
+    cancelAnimationFrame(rafId);
+    elapsed = performance.now() - startTs;
+    $("timer").textContent = formatTime(elapsed);
+  }
+
+  // ---------- 화면 갱신 ----------
+  function render() {
+    let sum = 0;
+    const picked = [];
+
+    state.forEach((isFront, i) => {
+      cardEls[i].classList.toggle("flipped", isFront);
+      cardEls[i].setAttribute("aria-pressed", String(isFront));
+      bitEls[i].classList.toggle("on", isFront);
+      bitEls[i].querySelector("span").textContent = isFront ? "1" : "0";
+      if (isFront) {
+        sum += values[i];
+        picked.push(values[i]);
+      }
+    });
+
+    const n = values.length;
+    const max = maxNumber();
+
+    $("countNum").textContent = n;
+    $("bitsNum").textContent = n;
+    $("maxNum").textContent = max;
+    $("decimal").textContent = sum;
+    $("binary").textContent = state.map((b) => (b ? "1" : "0")).join("");
+    $("formula").textContent = picked.length
+      ? `${picked.join(" + ")} = ${sum}`
+      : "앞면 카드가 없어요.";
+
+    // 정답 판정 (게임 중에만)
+    if (mode === "playing" && !locked && sum === target) {
+      locked = true;
+      setTimeout(afterCorrect, FEEDBACK_DELAY);
+    }
+
+    // 화면 전환
+    const playing = mode === "playing";
+    const done = mode === "done";
+    $("idleBar").hidden = playing || done;
+    $("playBar").hidden = !playing;
+    $("goalSec").hidden = done;
+    $("endSec").hidden = !done;
+    $("newGoalBtn").hidden = playing;
+    $("probNum").textContent = problem;
+
+    // 목표 & 상태 메시지
+    $("goalNum").textContent = target;
+    const status = $("goalStatus");
+    if (playing && locked) {
+      status.textContent = "🎉 정답! 다음 문제로 넘어갑니다...";
+      status.classList.add("done");
+    } else if (playing) {
+      status.textContent = `문제 ${problem}: 앞면을 바꿔서 목표 숫자를 만들어 보세요.`;
+      status.classList.remove("done");
+    } else {
+      status.textContent = "";
+      status.classList.remove("done");
+    }
+
+    // 버튼 활성화
+    $("removeBtn").disabled = playing || n <= MIN_CARDS;
+    $("addBtn").disabled = playing || n >= MAX_CARDS;
+  }
+
+  // ---------- 이벤트 ----------
+  $("startBtn").addEventListener("click", startGame);
+  $("restartBtn").addEventListener("click", startGame);
+  $("addBtn").addEventListener("click", addCard);
+  $("removeBtn").addEventListener("click", removeCard);
+  $("newGoalBtn").addEventListener("click", () => {
+    newTarget();
+    render();
+  });
+  $("allFront").addEventListener("click", () => {
+    if (locked) return;
+    state.fill(true);
+    render();
+  });
+  $("reset").addEventListener("click", () => {
+    if (locked) return;
+    state.fill(false);
+    render();
+  });
+
+  // 초기화
+  buildCards();
+  newTarget();
+  render();
+</script>
+</body>
+</html>
